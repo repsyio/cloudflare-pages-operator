@@ -30,10 +30,10 @@ Changing `image`, `directory` or `revision` triggers a new deploy. Deleting the 
 ### 1. Build the images
 
 ```sh
-docker build -t <registry>/cfpo:0.1.1 .
-docker build -t <registry>/cfpo-deployer:0.1.1 deployer/
-docker push <registry>/cfpo:0.1.1
-docker push <registry>/cfpo-deployer:0.1.1
+docker build -t <registry>/cfpo:0.1.2 .
+docker build -t <registry>/cfpo-deployer:0.1.2 deployer/
+docker push <registry>/cfpo:0.1.2
+docker push <registry>/cfpo-deployer:0.1.2
 ```
 
 ### 2. Create an API token
@@ -53,7 +53,7 @@ Limit the zone permissions to the zones you want the operator to manage.
 ```sh
 helm install cfpo charts/cfpo -n cfpo-system --create-namespace \
   --set image.repository=<registry>/cfpo \
-  --set deployer.image=<registry>/cfpo-deployer:0.1.1 \
+  --set deployer.image=<registry>/cfpo-deployer:0.1.2 \
   --set cloudflare.accountId=<account-id> \
   --set cloudflare.apiToken=<token>
 ```

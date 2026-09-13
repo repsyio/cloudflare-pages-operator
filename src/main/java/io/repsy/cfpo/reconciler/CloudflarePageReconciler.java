@@ -440,8 +440,11 @@ public class CloudflarePageReconciler
 
   /** A newer spec supersedes running deploys, so an older upload cannot finish last. */
   private void stopSupersededJobs(String currentJobName, Context<CloudflarePage> context) {
+    // Not the (type, eventSourceName) overload: for an informer it lists the cache in the primary's
+    // namespace, and deploy Jobs live in the operator namespace. This one goes through the
+    // owner-annotation index, and deploy-jobs is the only Job event source.
     context
-        .getSecondaryResourcesAsStream(Job.class, JOB_EVENT_SOURCE)
+        .getSecondaryResourcesAsStream(Job.class)
         .filter(j -> !currentJobName.equals(j.getMetadata().getName()))
         .filter(j -> !JobStates.finished(j))
         .forEach(

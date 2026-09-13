@@ -59,6 +59,7 @@ class CloudflarePageReconcilerIT {
   static final String APP_NS = "apps";
   static final String CRD_FILE = "charts/cfpo/crds/cloudflarepages.pages.repsy.io-v1.yml";
   static final String IMAGE = "registry.example.com/web:1.0.0";
+  static final String IMAGE_V2 = "registry.example.com/web:2.0.0";
   static final String DIRECTORY = "/dist";
   static final Duration TIMEOUT = Duration.ofSeconds(60);
 
@@ -168,6 +169,29 @@ class CloudflarePageReconcilerIT {
         .hasValueSatisfying(c -> assertThat(c.getReason()).isEqualTo("DeployFailed"));
     assertThat(client.batch().v1().jobs().inNamespace(OPERATOR_NS).withLabel(DeployJobFactory.OWNER_UID_LABEL, page.getMetadata().getUid()).list().getItems())
         .hasSize(1);
+  }
+
+  @Test
+  void newSpecStopsSupersededDeployJob() {
+    stubCloudflare("apps-moved", "moved.example.com");
+    client.resource(page("moved", "moved.example.com")).create();
+    Job first = awaitJob("moved");
+
+    client.resources(CloudflarePage.class).inNamespace(APP_NS).withName("moved").edit(p -> {
+      p.getSpec().setImage(IMAGE_V2);
+      return p;
+    });
+
+    String secondName = Naming.deployJobName(APP_NS, "moved", Naming.deployHash(IMAGE_V2, DIRECTORY));
+    await()
+        .atMost(TIMEOUT)
+        .until(() -> client.batch().v1().jobs().inNamespace(OPERATOR_NS).withName(secondName).get(), Objects::nonNull);
+    await()
+        .atMost(TIMEOUT)
+        .untilAsserted(
+            () -> assertThat(client.batch().v1().jobs().inNamespace(OPERATOR_NS).withName(first.getMetadata().getName()).get())
+                .as("superseded job %s", first.getMetadata().getName())
+                .isNull());
   }
 
   // ---- helpers ----
