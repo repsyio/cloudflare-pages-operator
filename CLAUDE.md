@@ -13,8 +13,8 @@ mvn test -Dtest=CloudflareClientTest         # single test class (add #methodNam
 mvn verify -Dit.test=CloudflarePageReconcilerIT -Dtest=none -Dsurefire.failIfNoSpecifiedTests=false   # only the IT
 mvn package -DskipTests                      # shaded jar at target/cfpo.jar
 
-docker build -t cfpo:0.1.0 .                 # operator image (multi-stage, runs maven inside)
-docker build -t cfpo-deployer:0.1.0 deployer/  # wrangler image used by deploy Jobs
+docker build -t cfpo:dev .                   # operator image (multi-stage, runs maven inside)
+docker build -t cfpo-deployer:dev deployer/  # wrangler image used by deploy Jobs
 
 # helm is not installed locally; lint/render through a container
 docker run --rm -v "$PWD/charts/cfpo:/chart:ro" alpine/helm:3.19.0 lint /chart --set cloudflare.accountId=x --set cloudflare.apiToken=x
@@ -24,6 +24,18 @@ No formatter or linter plugin is configured.
 
 **Kubernetes safety:** the default kubeconfig context on the development machine may be a production cluster. Don't run `kubectl`/`helm` against the current context unless the user asks. Tests don't need a cluster: `*IT` classes use `@EnableKubeAPIServer` (kube-api-test). It downloads and starts a throwaway kube-apiserver and injects a `KubernetesClient` into a static field, so tests never read kubeconfig. That API server has no controllers, so the IT sets Job status by hand to simulate completion or failure.
 
+## Releases
+
+Pushing a tag `v<version>` runs `.github/workflows/release.yml`. It runs `mvn verify`, then pushes `repo.repsy.io/firat/apps/cfpo:<version>` and `repo.repsy.io/firat/apps/cfpo-deployer:<version>` using the repository secrets `REPSY_USERNAME`/`REPSY_TOKEN`. The workflow fails if the tag doesn't match `appVersion`, because the chart uses `appVersion` as the default operator image tag.
+
+Bump these together in one commit, then tag:
+- `charts/cfpo/Chart.yaml`: `version` and `appVersion`
+- `charts/cfpo/values.yaml`: `deployer.image`
+- `pom.xml`: `<version>` (keep `-SNAPSHOT`)
+- the image tags in the `README.md` install commands
+
+The live install is `apps/cfpo.yaml` in `repsyio/apps-firat-apps`. It pins `targetRevision` and `deployer.image`; bump both there once the release workflow has pushed the images.
+
 ## Generated CRD
 
 `crd-generator-maven-plugin` writes the CRD from `src/main/java/io/repsy/cfpo/crd/*` directly into `charts/cfpo/crds/cloudflarepages.pages.repsy.io-v1.yml` on every build.
@@ -31,6 +43,7 @@ No formatter or linter plugin is configured.
 - Validation comes from Fabric8 annotations on the classes: `@Required`, `@Pattern`, `@Size`, `@Default`, `@ValidationRule`, `@PrinterColumn`.
 - `@Pattern` regexes are enforced by the API server's RE2 engine, so no lookaheads.
 - The integration test loads the CRD from that chart path.
+- `@PrinterColumn` emits `priority: 0`, which the API server drops. GitOps tools therefore see a permanent diff on the CRD; the ArgoCD Application in `apps-firat-apps` ignores that field.
 
 ## Architecture
 
@@ -47,12 +60,15 @@ Each step records its outcome as a status condition: `Deployed`, `DomainActive`,
   - annotations `pages.repsy.io/owner-namespace` and `owner-name`, which the JOSDK `SecondaryToPrimaryMapper` (`DeployJobFactory::ownerOf`) uses to trigger reconciles;
   - label `pages.repsy.io/owner-uid`, used to delete a resource's Jobs on cleanup.
 - **Lookup:** the reconciler fetches a Job from the informer cache by name via `context.getSecondaryResource(Job.class, JOB_EVENT_SOURCE, name, namespace)`.
+  - To list a resource's Jobs, use `context.getSecondaryResourcesAsStream(Job.class)`, which goes through the owner-annotation index.
+  - Don't use the `(type, eventSourceName)` overload of `getSecondaryResourcesAsStream`. In JOSDK 5.6 it lists the informer cache in the *primary's* namespace, so it never finds deploy Jobs.
 - **Pod layout:** an init container runs the *app image* with `sh -c COPY_SCRIPT`, copying `$SOURCE_DIR` into an emptyDir. The directory reaches the script only through the env var, never interpolated into it. The main container runs `wrangler pages deploy` from the deployer image.
 - **Versioning:** `Naming.deployHash(image[#revision], directory)` identifies a content version.
   - The Job name embeds the hash.
   - On success the hash goes to `status.deployedHash`.
   - On failure it goes to `status.failedHash` and is **not retried** until the spec changes.
-  - Starting a new hash deletes older unfinished Jobs, so a stale upload can't finish last.
+  - Starting a new hash deletes older unfinished Jobs (`stopSupersededJobs`), so a stale upload can't finish last. The IT `newSpecStopsSupersededDeployJob` covers this.
+  - A resource whose current hash is already deployed returns before that step, so an old Job that can't finish (e.g. a missing image) is left to `activeDeadlineSeconds` and the Job TTL.
 
 **Ownership safety.** The operator only deletes what it can prove it created:
 - **Pages project:** deleted only if `status.projectCreated == true`. A project that already existed on first reconcile is adopted with `projectCreated=false`.
@@ -67,6 +83,12 @@ Each step records its outcome as a status condition: `Deployed`, `DomainActive`,
 **Cloudflare client** (`cloudflare/CloudflareClient`). A hand-written `java.net.http` client that unwraps the v4 `{success, errors, result}` envelope into Java records. Zone lookup walks parent domains (`a.b.example.com` → `b.example.com` → `example.com`), filtered by account ID. The base URL is configurable, so tests point it at WireMock.
 
 **Configuration contract.** The operator reads only environment variables (`config/OperatorConfig`). The chart's `templates/deployment.yaml` must stay in sync with the variable names in `OperatorConfig.from()`. The deploy Job gets its token from the same Secret, via `CREDENTIALS_SECRET_NAME`/`CREDENTIALS_SECRET_KEY`. `CfpoOperator.register()` wires the client, config and reconciler, and is shared by `main` and the integration test.
+
+**RBAC** (`charts/cfpo/templates/rbac.yaml`):
+- **ClusterRole:** covers `cloudflarepages` (including status and finalizers) and events.
+- **Role:** covers Jobs and pods in the operator namespace only.
+- **Events verbs:** JOSDK's event recorder GETs an existing event before creating or patching it, so events need `get`, `create`, `patch` and `update`. With fewer verbs every event fails with 403, while reconciling still works.
+- **Testing:** the IT client is cluster-admin, so tests can't catch a missing verb. Check a live install with `kubectl auth can-i <verb> <resource> -n <ns> --as system:serviceaccount:<release-ns>:cfpo`.
 
 **Name limits** (`reconciler/Naming`):
 - Pages project names: ≤58 chars, `[a-z0-9-]`.

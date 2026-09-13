@@ -29,6 +29,8 @@ Changing `image`, `directory` or `revision` triggers a new deploy. Deleting the 
 
 ### 1. Build the images
 
+Tagged releases publish both images to `repo.repsy.io/firat/apps` (see [Development](#development)). To build your own:
+
 ```sh
 docker build -t <registry>/cfpo:0.1.2 .
 docker build -t <registry>/cfpo-deployer:0.1.2 deployer/
@@ -109,15 +111,33 @@ apps        my-frontend   app.example.com   Ready   https://app.example.com   5m
 
 Conditions: `Deployed`, `DomainActive`, `DnsConfigured`, `Ready`. Deploy failures include the output of the failing container.
 
+`status.pagesDevUrl` holds the project's real `pages.dev` address.
+
+`kubectl describe cloudflarepage <name>` lists these events:
+- **Progress:** `ProjectCreated`, `DeployStarted`, `Deployed`, `DomainAdded` and `DnsRecordCreated`.
+- **Problems:** `DeployFailed` and `CleanupFailed`.
+
 ## Behaviour notes and limitations
 
 - **Images need `sh` and `cp`.** The copy step runs `sh -c 'cp -R …'` inside your image as a non-root user (uid 65532). Distroless and `scratch` images won't work, and neither will files readable only by root.
 - **A failed deploy isn't retried** until the spec changes. Bump `revision` to retry the same image.
+- **Newer specs supersede running deploys.** When `image`, `directory` or `revision` changes, unfinished deploy Jobs for older content are deleted, so an older upload can't finish after a newer one.
+- **The `pages.dev` subdomain can differ from the project name.** Subdomains are global, so Cloudflare appends a suffix when the name is taken (for example `testapp-cka.pages.dev`). The CNAME points at the real subdomain.
 - **Existing projects are adopted, not owned.** If the project already exists the first time a resource is reconciled, the operator uses it but never deletes it. `status.projectCreated` shows which case applies.
 - **DNS records are only touched when the operator created them.** It recognises its own records by the comment `managed-by: cfpo <namespace>/<name>`. If another record already exists for the domain, the resource reports `DnsConflict` and nothing is overwritten.
 - **Domains outside the account:** if the zone isn't in the account, `DnsConfigured` explains which CNAME to create with your DNS provider. The domain becomes active once that record exists.
 - **Cleanup failures block deletion.** If Cloudflare refuses a cleanup step, for example a project with too many deployments, the finalizer stays and a `CleanupFailed` event explains why. Set the keep-on-delete annotation to finish deleting without cleanup.
 - **Single replica.** The chart runs one operator replica with the `Recreate` strategy.
+- **GitOps diff on the CRD.** The generated CRD sets `priority: 0` on printer columns, and the API server drops that value. With ArgoCD, add this to the Application:
+
+  ```yaml
+  ignoreDifferences:
+    - group: apiextensions.k8s.io
+      kind: CustomResourceDefinition
+      name: cloudflarepages.pages.repsy.io
+      jqPathExpressions:
+        - '.spec.versions[].additionalPrinterColumns[] | select(.priority == 0) | .priority'
+  ```
 
 ## Development
 
@@ -128,9 +148,15 @@ mvn verify
 This runs:
 
 - **Unit tests:** naming rules, Job construction, the Cloudflare client against WireMock.
-- **Integration tests (`*IT`):** these start a throwaway `kube-apiserver` with [kube-api-test](https://github.com/fabric8io/kubernetes-client/tree/main/junit/kube-api-test). The first run downloads the binaries. The tests never use your kubeconfig.
+- **Integration tests (`*IT`):** these start a throwaway `kube-apiserver` with [kube-api-test](https://github.com/fabric8io/kubernetes-client/tree/main/junit/kube-api-test). They cover deploy and cleanup, failed deploys, and stopping superseded Jobs. The first run downloads the binaries. The tests never use your kubeconfig. The test client is cluster-admin, so RBAC gaps in the chart only show up on a real cluster; check with `kubectl auth can-i ... --as system:serviceaccount:<namespace>:cfpo`.
 
 Pushing a `v*` tag runs `.github/workflows/release.yml`. It runs `mvn verify`, then pushes `repo.repsy.io/firat/apps/cfpo:<version>` and `cfpo-deployer:<version>` using the repository secrets `REPSY_USERNAME`/`REPSY_TOKEN`. The tag without its `v` must equal `appVersion` in `charts/cfpo/Chart.yaml`, because the chart uses that as the default image tag.
+
+Before tagging, bump these together in one commit:
+- `version` and `appVersion` in `charts/cfpo/Chart.yaml`
+- `deployer.image` in `charts/cfpo/values.yaml`
+- `<version>` in `pom.xml`
+- the image tags in the install commands above
 
 Building also regenerates the CRD from the Java classes into `charts/cfpo/crds/`, so commit that file together with changes to `src/main/java/io/repsy/cfpo/crd`.
 
