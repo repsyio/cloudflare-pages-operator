@@ -1,0 +1,6 @@
+apiVersion: v2
+name: cfpo
+description: Cloudflare Pages Operator - publishes static sites from container images to Cloudflare Pages
+type: application
+version: 0.1.0
+appVersion: "0.1.0"

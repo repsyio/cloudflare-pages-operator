@@ -1,0 +1,62 @@
+image:
+  # Operator image built from the repository's Dockerfile.
+  repository: cfpo
+  # Defaults to the chart appVersion.
+  tag: ""
+  pullPolicy: IfNotPresent
+
+imagePullSecrets: []
+
+cloudflare:
+  accountId: ""
+  # API token with: Account > Cloudflare Pages > Edit, Zone > DNS > Edit, Zone > Zone > Read.
+  apiToken: ""
+  # Use an existing Secret (in the release namespace) instead of creating one from apiToken.
+  existingSecret: ""
+  existingSecretKey: api-token
+  apiBaseUrl: https://api.cloudflare.com/client/v4
+
+deployer:
+  # Image with wrangler, built from deployer/Dockerfile.
+  image: cfpo-deployer:0.1.0
+
+deployJob:
+  # Pull secrets (in the release namespace) needed to pull application images.
+  imagePullSecrets: []
+  ttlSecondsAfterFinished: 3600
+  activeDeadlineSeconds: 900
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      memory: 1Gi
+
+# How often a Ready CloudflarePage is re-checked against Cloudflare.
+resyncIntervalSeconds: 600
+
+# Namespaces to watch for CloudflarePage resources; empty means all namespaces.
+watchNamespaces: []
+
+resources:
+  requests:
+    cpu: 100m
+    memory: 256Mi
+  limits:
+    memory: 512Mi
+
+podSecurityContext:
+  runAsNonRoot: true
+  runAsUser: 10001
+  seccompProfile:
+    type: RuntimeDefault
+
+securityContext:
+  allowPrivilegeEscalation: false
+  readOnlyRootFilesystem: true
+  capabilities:
+    drop: ["ALL"]
+
+nodeSelector: {}
+tolerations: []
+affinity: {}

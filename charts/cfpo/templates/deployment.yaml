@@ -1,0 +1,101 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "cfpo.fullname" . }}
+  labels:
+    {{- include "cfpo.labels" . | nindent 4 }}
+spec:
+  # A single instance; Recreate avoids two operators reconciling at once during upgrades.
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      {{- include "cfpo.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "cfpo.selectorLabels" . | nindent 8 }}
+      annotations:
+        checksum/secret: {{ include (print $.Template.BasePath "/secret.yaml") . | sha256sum }}
+    spec:
+      serviceAccountName: {{ include "cfpo.fullname" . }}
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      securityContext:
+        {{- toYaml .Values.podSecurityContext | nindent 8 }}
+      containers:
+        - name: operator
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          env:
+            - name: CLOUDFLARE_API_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "cfpo.secretName" . }}
+                  key: {{ include "cfpo.secretKey" . }}
+            - name: CLOUDFLARE_ACCOUNT_ID
+              value: {{ required "cloudflare.accountId is required" .Values.cloudflare.accountId | quote }}
+            - name: CLOUDFLARE_API_BASE_URL
+              value: {{ .Values.cloudflare.apiBaseUrl | quote }}
+            - name: CREDENTIALS_SECRET_NAME
+              value: {{ include "cfpo.secretName" . | quote }}
+            - name: CREDENTIALS_SECRET_KEY
+              value: {{ include "cfpo.secretKey" . | quote }}
+            - name: OPERATOR_NAMESPACE
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.namespace
+            - name: DEPLOYER_IMAGE
+              value: {{ .Values.deployer.image | quote }}
+            - name: DEPLOY_PULL_SECRETS
+              value: {{ join "," .Values.deployJob.imagePullSecrets | quote }}
+            - name: DEPLOY_JOB_TTL_SECONDS
+              value: {{ .Values.deployJob.ttlSecondsAfterFinished | quote }}
+            - name: DEPLOY_JOB_DEADLINE_SECONDS
+              value: {{ .Values.deployJob.activeDeadlineSeconds | quote }}
+            - name: DEPLOY_JOB_RESOURCES
+              value: {{ .Values.deployJob.resources | toJson | quote }}
+            - name: RESYNC_SECONDS
+              value: {{ .Values.resyncIntervalSeconds | quote }}
+            - name: WATCH_NAMESPACES
+              value: {{ join "," .Values.watchNamespaces | quote }}
+          ports:
+            - name: health
+              containerPort: 8080
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: health
+            initialDelaySeconds: 20
+            periodSeconds: 20
+          readinessProbe:
+            httpGet:
+              path: /readyz
+              port: health
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}
+          securityContext:
+            {{- toYaml .Values.securityContext | nindent 12 }}
+          volumeMounts:
+            - name: tmp
+              mountPath: /tmp
+      volumes:
+        - name: tmp
+          emptyDir: {}
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}

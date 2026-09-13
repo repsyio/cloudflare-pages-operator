@@ -1,0 +1,17 @@
+apiVersion: pages.repsy.io/v1alpha1
+kind: CloudflarePage
+metadata:
+  name: my-frontend
+  namespace: default
+  # annotations:
+  #   pages.repsy.io/keep-on-delete: "true"   # leave the Cloudflare project/domain/DNS on delete
+spec:
+  # Image that contains the built static site.
+  image: registry.example.com/my-frontend:1.0.0
+  # Directory inside the image to publish.
+  directory: /usr/share/nginx/html
+  # Custom domain; its zone must be in the operator's Cloudflare account.
+  domain: app.example.com
+  # Optional:
+  # projectName: my-frontend   # defaults to <namespace>-<name>
+  # branch: main               # production branch name

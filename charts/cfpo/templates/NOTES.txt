@@ -1,0 +1,17 @@
+cfpo is installed in namespace {{ .Release.Namespace }}.
+
+Publish a site by creating a CloudflarePage in your application's chart:
+
+  apiVersion: pages.repsy.io/v1alpha1
+  kind: CloudflarePage
+  metadata:
+    name: my-frontend
+  spec:
+    image: registry.example.com/my-frontend:1.0.0
+    directory: /usr/share/nginx/html
+    domain: app.example.com
+
+Check progress with:
+
+  kubectl get cloudflarepages -A
+  kubectl -n {{ .Release.Namespace }} get jobs -l app.kubernetes.io/managed-by=cfpo

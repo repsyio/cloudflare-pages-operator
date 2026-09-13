@@ -1,0 +1,22 @@
+# templates/cloudflarepage.yaml in an application chart.
+#
+# values.yaml:
+#   image:
+#     repository: registry.example.com/my-frontend
+#     tag: 1.0.0
+#   cloudflarePages:
+#     enabled: true
+#     directory: /usr/share/nginx/html
+#     domain: app.example.com
+{{- if .Values.cloudflarePages.enabled }}
+apiVersion: pages.repsy.io/v1alpha1
+kind: CloudflarePage
+metadata:
+  name: {{ .Release.Name }}
+  labels:
+    app.kubernetes.io/instance: {{ .Release.Name }}
+spec:
+  image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+  directory: {{ .Values.cloudflarePages.directory | quote }}
+  domain: {{ .Values.cloudflarePages.domain | quote }}
+{{- end }}

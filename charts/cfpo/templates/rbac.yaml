@@ -1,0 +1,65 @@
+# Cluster-wide: watch CloudflarePage resources and emit events on them.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: {{ include "cfpo.fullname" . }}
+  labels:
+    {{- include "cfpo.labels" . | nindent 4 }}
+rules:
+  - apiGroups: ["pages.repsy.io"]
+    resources: ["cloudflarepages"]
+    verbs: ["get", "list", "watch", "patch", "update"]
+  - apiGroups: ["pages.repsy.io"]
+    resources: ["cloudflarepages/status"]
+    verbs: ["get", "patch", "update"]
+  - apiGroups: ["pages.repsy.io"]
+    resources: ["cloudflarepages/finalizers"]
+    verbs: ["update"]
+  - apiGroups: ["", "events.k8s.io"]
+    resources: ["events"]
+    verbs: ["create", "patch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: {{ include "cfpo.fullname" . }}
+  labels:
+    {{- include "cfpo.labels" . | nindent 4 }}
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: {{ include "cfpo.fullname" . }}
+subjects:
+  - kind: ServiceAccount
+    name: {{ include "cfpo.fullname" . }}
+    namespace: {{ .Release.Namespace }}
+---
+# Deploy Jobs only ever run in the operator's own namespace, next to the API token.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: {{ include "cfpo.fullname" . }}-jobs
+  labels:
+    {{- include "cfpo.labels" . | nindent 4 }}
+rules:
+  - apiGroups: ["batch"]
+    resources: ["jobs"]
+    verbs: ["get", "list", "watch", "create", "delete"]
+  - apiGroups: [""]
+    resources: ["pods"]
+    verbs: ["get", "list"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: {{ include "cfpo.fullname" . }}-jobs
+  labels:
+    {{- include "cfpo.labels" . | nindent 4 }}
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: {{ include "cfpo.fullname" . }}-jobs
+subjects:
+  - kind: ServiceAccount
+    name: {{ include "cfpo.fullname" . }}
+    namespace: {{ .Release.Namespace }}
