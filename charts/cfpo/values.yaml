@@ -18,7 +18,7 @@ cloudflare:
 
 deployer:
   # Image with wrangler, built from deployer/Dockerfile.
-  image: cfpo-deployer:0.1.0
+  image: cfpo-deployer:0.1.1
 
 deployJob:
   # Pull secrets (in the release namespace) needed to pull application images.

@@ -15,9 +15,10 @@ rules:
   - apiGroups: ["pages.repsy.io"]
     resources: ["cloudflarepages/finalizers"]
     verbs: ["update"]
+  # The JOSDK event recorder reads an existing event first and bumps its count, so get/update are needed too
   - apiGroups: ["", "events.k8s.io"]
     resources: ["events"]
-    verbs: ["create", "patch"]
+    verbs: ["get", "create", "patch", "update"]
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
