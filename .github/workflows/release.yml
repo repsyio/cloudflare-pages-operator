@@ -1,0 +1,80 @@
+name: Release images
+
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+    inputs:
+      version:
+        description: Image tag to publish, without the leading v (e.g. 0.1.0)
+        required: true
+
+env:
+  REGISTRY: repo.repsy.io
+  IMAGE_PREFIX: repo.repsy.io/firat/apps
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: "21"
+          cache: maven
+
+      - name: Unit and integration tests
+        run: mvn -B verify
+
+  images:
+    needs: test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - id: version
+        env:
+          INPUT_VERSION: ${{ inputs.version }}
+        run: |
+          if [ "$GITHUB_REF_TYPE" = tag ]; then
+            version="${GITHUB_REF_NAME#v}"
+            # The chart defaults image.tag to appVersion, so a tag must match it
+            app_version=$(sed -n -E 's/^appVersion: "?([^"]*)"?$/\1/p' charts/cfpo/Chart.yaml)
+            if [ "$version" != "$app_version" ]; then
+              echo "Tag $GITHUB_REF_NAME does not match chart appVersion $app_version" >&2
+              exit 1
+            fi
+          else
+            version="$INPUT_VERSION"
+          fi
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+
+      - uses: docker/login-action@v4
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ secrets.REPSY_USERNAME }}
+          password: ${{ secrets.REPSY_TOKEN }}
+
+      - uses: docker/setup-buildx-action@v4
+
+      - name: Operator image
+        uses: docker/build-push-action@v7
+        with:
+          context: .
+          platforms: linux/amd64
+          push: true
+          tags: ${{ env.IMAGE_PREFIX }}/cfpo:${{ steps.version.outputs.version }}
+          cache-from: type=gha,scope=operator
+          cache-to: type=gha,scope=operator,mode=max
+
+      - name: Deployer image
+        uses: docker/build-push-action@v7
+        with:
+          context: deployer
+          platforms: linux/amd64
+          push: true
+          tags: ${{ env.IMAGE_PREFIX }}/cfpo-deployer:${{ steps.version.outputs.version }}
+          cache-from: type=gha,scope=deployer
+          cache-to: type=gha,scope=deployer,mode=max

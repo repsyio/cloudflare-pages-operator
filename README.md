@@ -130,6 +130,8 @@ This runs:
 - **Unit tests:** naming rules, Job construction, the Cloudflare client against WireMock.
 - **Integration tests (`*IT`):** these start a throwaway `kube-apiserver` with [kube-api-test](https://github.com/fabric8io/kubernetes-client/tree/main/junit/kube-api-test). The first run downloads the binaries. The tests never use your kubeconfig.
 
+Pushing a `v*` tag runs `.github/workflows/release.yml`. It runs `mvn verify`, then pushes `repo.repsy.io/firat/apps/cfpo:<version>` and `cfpo-deployer:<version>` using the repository secrets `REPSY_USERNAME`/`REPSY_TOKEN`. The tag without its `v` must equal `appVersion` in `charts/cfpo/Chart.yaml`, because the chart uses that as the default image tag.
+
 Building also regenerates the CRD from the Java classes into `charts/cfpo/crds/`, so commit that file together with changes to `src/main/java/io/repsy/cfpo/crd`.
 
 Code layout:
