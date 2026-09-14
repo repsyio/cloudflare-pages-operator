@@ -136,6 +136,7 @@
             <arg>-J--add-exports=jdk.compiler/com.sun.tools.javac.util=ALL-UNNAMED</arg>
             <arg>--should-stop=ifError=FLOW</arg>
             <arg>-XDcompilePolicy=simple</arg>
+            <arg>-XDaddTypeAnnotationsToSymbol=true</arg>
             <arg>-Xplugin:ErrorProne -Xep:UnicodeInCode:OFF</arg>
           </compilerArgs>
           <annotationProcessorPaths>
