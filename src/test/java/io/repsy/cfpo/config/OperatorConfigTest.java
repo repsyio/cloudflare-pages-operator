@@ -3,14 +3,12 @@ package io.repsy.cfpo.config;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import io.fabric8.kubernetes.api.model.Quantity;
+import io.repsy.cfpo.cloudflare.CloudflareClient;
 import java.time.Duration;
 import java.util.HashMap;
 import java.util.Map;
-
 import org.junit.jupiter.api.Test;
-
-import io.fabric8.kubernetes.api.model.Quantity;
-import io.repsy.cfpo.cloudflare.CloudflareClient;
 
 public class OperatorConfigTest {
 
@@ -34,7 +32,8 @@ public class OperatorConfigTest {
     assertThat(config.deployPullSecrets()).isEmpty();
     assertThat(config.watchNamespaces()).isEmpty();
     assertThat(config.resyncInterval()).isEqualTo(Duration.ofMinutes(10));
-    assertThat(config.deployJobResources().getLimits()).containsEntry("memory", new Quantity("1Gi"));
+    assertThat(config.deployJobResources().getLimits())
+        .containsEntry("memory", new Quantity("1Gi"));
   }
 
   @Test
@@ -50,7 +49,8 @@ public class OperatorConfigTest {
     assertThat(config.deployPullSecrets()).containsExactly("regcred", "other");
     assertThat(config.watchNamespaces()).containsExactlyInAnyOrder("apps", "web");
     assertThat(config.resyncInterval()).isEqualTo(Duration.ofSeconds(60));
-    assertThat(config.deployJobResources().getLimits()).containsEntry("memory", new Quantity("2Gi"));
+    assertThat(config.deployJobResources().getLimits())
+        .containsEntry("memory", new Quantity("2Gi"));
   }
 
   @Test

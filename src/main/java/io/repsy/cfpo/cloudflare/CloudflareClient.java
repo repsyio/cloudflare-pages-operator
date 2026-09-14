@@ -1,5 +1,15 @@
 package io.repsy.cfpo.cloudflare;
 
+import com.fasterxml.jackson.annotation.JsonInclude;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.DeserializationFeature;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import io.repsy.cfpo.cloudflare.model.ApiError;
+import io.repsy.cfpo.cloudflare.model.DnsRecord;
+import io.repsy.cfpo.cloudflare.model.PagesDomain;
+import io.repsy.cfpo.cloudflare.model.PagesProject;
+import io.repsy.cfpo.cloudflare.model.Zone;
 import java.io.IOException;
 import java.net.URI;
 import java.net.URLEncoder;
@@ -14,20 +24,10 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
 
-import com.fasterxml.jackson.annotation.JsonInclude;
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.DeserializationFeature;
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
-
-import io.repsy.cfpo.cloudflare.model.ApiError;
-import io.repsy.cfpo.cloudflare.model.DnsRecord;
-import io.repsy.cfpo.cloudflare.model.PagesDomain;
-import io.repsy.cfpo.cloudflare.model.PagesProject;
-import io.repsy.cfpo.cloudflare.model.Zone;
-
 /** Minimal client for the parts of the Cloudflare v4 API the operator needs. */
 public class CloudflareClient {
+
+  private static final int FIRST_ERROR_HTTP_STATUS = 300;
 
   public static final String DEFAULT_BASE_URL = "https://api.cloudflare.com/client/v4";
 
@@ -40,7 +40,7 @@ public class CloudflareClient {
   private final HttpClient http;
   private final ObjectMapper mapper;
 
-  public CloudflareClient(String baseUrl, String apiToken, String accountId) {
+  public CloudflareClient(final String baseUrl, final String apiToken, final String accountId) {
     this(
         baseUrl,
         apiToken,
@@ -48,7 +48,8 @@ public class CloudflareClient {
         HttpClient.newBuilder().connectTimeout(CONNECT_TIMEOUT).build());
   }
 
-  CloudflareClient(String baseUrl, String apiToken, String accountId, HttpClient http) {
+  CloudflareClient(
+      final String baseUrl, final String apiToken, final String accountId, final HttpClient http) {
     this.baseUrl = baseUrl.endsWith("/") ? baseUrl.substring(0, baseUrl.length() - 1) : baseUrl;
     this.apiToken = apiToken;
     this.accountId = accountId;
@@ -61,35 +62,38 @@ public class CloudflareClient {
 
   // ---- Pages projects ----
 
-  public Optional<PagesProject> getProject(String projectName) {
-    return getOptional(projectPath(projectName), PagesProject.class);
+  public Optional<PagesProject> getProject(final String projectName) {
+    return this.getOptional(this.projectPath(projectName), PagesProject.class);
   }
 
-  public PagesProject createProject(String projectName, String productionBranch) {
-    return send(
+  public PagesProject createProject(final String projectName, final String productionBranch) {
+    return this.send(
         "POST",
-        accountPath("/pages/projects"),
+        this.accountPath("/pages/projects"),
         Map.of("name", projectName, "production_branch", productionBranch),
         PagesProject.class);
   }
 
-  public void deleteProject(String projectName) {
-    deleteIgnoringNotFound(projectPath(projectName));
+  public void deleteProject(final String projectName) {
+    this.deleteIgnoringNotFound(this.projectPath(projectName));
   }
 
   // ---- Pages custom domains ----
 
-  public List<PagesDomain> listDomains(String projectName) {
-    return sendList("GET", projectPath(projectName) + "/domains", PagesDomain.class);
+  public List<PagesDomain> listDomains(final String projectName) {
+    return this.sendList("GET", this.projectPath(projectName) + "/domains", PagesDomain.class);
   }
 
-  public PagesDomain addDomain(String projectName, String domain) {
-    return send(
-        "POST", projectPath(projectName) + "/domains", Map.of("name", domain), PagesDomain.class);
+  public PagesDomain addDomain(final String projectName, final String domain) {
+    return this.send(
+        "POST",
+        this.projectPath(projectName) + "/domains",
+        Map.of("name", domain),
+        PagesDomain.class);
   }
 
-  public void deleteDomain(String projectName, String domain) {
-    deleteIgnoringNotFound(projectPath(projectName) + "/domains/" + segment(domain));
+  public void deleteDomain(final String projectName, final String domain) {
+    this.deleteIgnoringNotFound(this.projectPath(projectName) + "/domains/" + segment(domain));
   }
 
   // ---- Zones & DNS ----
@@ -98,13 +102,13 @@ public class CloudflareClient {
    * Finds the zone a hostname belongs to by trying each parent name, e.g. {@code a.b.example.com}
    * then {@code b.example.com} then {@code example.com}.
    */
-  public Optional<Zone> findZoneForDomain(String domain) {
+  public Optional<Zone> findZoneForDomain(final String domain) {
     String candidate = domain.toLowerCase(Locale.ROOT);
     while (candidate.contains(".")) {
-      List<Zone> zones =
-          sendList(
+      final List<Zone> zones =
+          this.sendList(
               "GET",
-              "/zones?name=" + query(candidate) + "&account.id=" + query(accountId),
+              "/zones?name=" + query(candidate) + "&account.id=" + query(this.accountId),
               Zone.class);
       if (!zones.isEmpty()) {
         return Optional.of(zones.getFirst());
@@ -115,52 +119,54 @@ public class CloudflareClient {
   }
 
   /** Lists records of any type with exactly this name. */
-  public List<DnsRecord> listRecordsByName(String zoneId, String name) {
-    return sendList(
+  public List<DnsRecord> listRecordsByName(final String zoneId, final String name) {
+    return this.sendList(
         "GET", "/zones/" + segment(zoneId) + "/dns_records?name=" + query(name), DnsRecord.class);
   }
 
-  public DnsRecord createCnameRecord(String zoneId, String name, String target, String comment) {
-    Map<String, Object> body = new LinkedHashMap<>();
+  public DnsRecord createCnameRecord(
+      final String zoneId, final String name, final String target, final String comment) {
+    final Map<String, Object> body = new LinkedHashMap<>();
     body.put("type", "CNAME");
     body.put("name", name);
     body.put("content", target);
     body.put("proxied", true);
     body.put("ttl", 1);
     body.put("comment", comment);
-    return send("POST", "/zones/" + segment(zoneId) + "/dns_records", body, DnsRecord.class);
+    return this.send("POST", "/zones/" + segment(zoneId) + "/dns_records", body, DnsRecord.class);
   }
 
-  public DnsRecord updateCnameRecord(String zoneId, String recordId, String target, String comment) {
-    Map<String, Object> body = new LinkedHashMap<>();
+  public DnsRecord updateCnameRecord(
+      final String zoneId, final String recordId, final String target, final String comment) {
+    final Map<String, Object> body = new LinkedHashMap<>();
     body.put("content", target);
     body.put("proxied", true);
     body.put("comment", comment);
-    return send(
+    return this.send(
         "PATCH",
         "/zones/" + segment(zoneId) + "/dns_records/" + segment(recordId),
         body,
         DnsRecord.class);
   }
 
-  public void deleteDnsRecord(String zoneId, String recordId) {
-    deleteIgnoringNotFound("/zones/" + segment(zoneId) + "/dns_records/" + segment(recordId));
+  public void deleteDnsRecord(final String zoneId, final String recordId) {
+    this.deleteIgnoringNotFound("/zones/" + segment(zoneId) + "/dns_records/" + segment(recordId));
   }
 
   // ---- plumbing ----
 
-  private String accountPath(String suffix) {
-    return "/accounts/" + segment(accountId) + suffix;
+  private String accountPath(final String suffix) {
+    return "/accounts/" + segment(this.accountId) + suffix;
   }
 
-  private String projectPath(String projectName) {
-    return accountPath("/pages/projects/" + segment(projectName));
+  private String projectPath(final String projectName) {
+    return this.accountPath("/pages/projects/" + segment(projectName));
   }
 
-  private <T> Optional<T> getOptional(String path, Class<T> type) {
+  private <T> Optional<T> getOptional(final String path, final Class<T> type) {
     try {
-      return Optional.of(send("GET", path, null, type));
-    } catch (CloudflareApiException e) {
+      return Optional.of(this.send("GET", path, null, type));
+    } catch (final CloudflareApiException e) {
       if (e.isNotFound()) {
         return Optional.empty();
       }
@@ -168,78 +174,75 @@ public class CloudflareClient {
     }
   }
 
-  private void deleteIgnoringNotFound(String path) {
+  private void deleteIgnoringNotFound(final String path) {
     try {
-      execute("DELETE", path, null);
-    } catch (CloudflareApiException e) {
+      this.execute("DELETE", path, null);
+    } catch (final CloudflareApiException e) {
       if (!e.isNotFound()) {
         throw e;
       }
     }
   }
 
-  private <T> T send(String method, String path, Object body, Class<T> type) {
-    JsonNode result = execute(method, path, body);
-    return mapper.convertValue(result, type);
+  private <T> T send(
+      final String method, final String path, final Object body, final Class<T> type) {
+    final JsonNode result = this.execute(method, path, body);
+    return this.mapper.convertValue(result, type);
   }
 
-  private <T> List<T> sendList(String method, String path, Class<T> type) {
-    JsonNode result = execute(method, path, null);
+  private <T> List<T> sendList(final String method, final String path, final Class<T> type) {
+    final JsonNode result = this.execute(method, path, null);
     if (result == null || !result.isArray()) {
       return List.of();
     }
-    return mapper.convertValue(
-        result, mapper.getTypeFactory().constructCollectionType(List.class, type));
+    return this.mapper.convertValue(
+        result, this.mapper.getTypeFactory().constructCollectionType(List.class, type));
   }
 
-  private JsonNode execute(String method, String path, Object body) {
-    HttpRequest.Builder request =
-        HttpRequest.newBuilder(URI.create(baseUrl + path))
+  @SuppressWarnings("checkstyle:CyclomaticComplexity")
+  private JsonNode execute(final String method, final String path, final Object body) {
+    final HttpRequest.Builder request =
+        HttpRequest.newBuilder(URI.create(this.baseUrl + path))
             .timeout(REQUEST_TIMEOUT)
-            .header("Authorization", "Bearer " + apiToken)
+            .header("Authorization", "Bearer " + this.apiToken)
             .header("Accept", "application/json");
     if (body != null) {
       request
           .header("Content-Type", "application/json")
-          .method(method, HttpRequest.BodyPublishers.ofString(toJson(body)));
+          .method(method, HttpRequest.BodyPublishers.ofString(this.toJson(body)));
     } else {
       request.method(method, HttpRequest.BodyPublishers.noBody());
     }
 
-    HttpResponse<String> response;
+    final HttpResponse<String> response;
     try {
-      response = http.send(request.build(), HttpResponse.BodyHandlers.ofString());
-    } catch (IOException e) {
+      response = this.http.send(request.build(), HttpResponse.BodyHandlers.ofString());
+    } catch (final IOException e) {
       throw new CloudflareApiException(method, path, 0, List.of(), null, e);
-    } catch (InterruptedException e) {
+    } catch (final InterruptedException e) {
       Thread.currentThread().interrupt();
       throw new CloudflareApiException(method, path, 0, List.of(), null, e);
     }
 
-    JsonNode envelope = parse(response.body());
-    boolean success = envelope != null && envelope.path("success").asBoolean(false);
-    if (response.statusCode() >= 300 || !success) {
+    final JsonNode envelope = this.parse(response.body());
+    final boolean success = envelope != null && envelope.path("success").asBoolean(false);
+    if (response.statusCode() >= FIRST_ERROR_HTTP_STATUS || !success) {
       throw new CloudflareApiException(
-          method,
-          path,
-          response.statusCode(),
-          errors(envelope),
-          retryAfter(response),
-          null);
+          method, path, response.statusCode(), this.errors(envelope), retryAfter(response), null);
     }
     return envelope.get("result");
   }
 
-  private List<ApiError> errors(JsonNode envelope) {
+  private List<ApiError> errors(final JsonNode envelope) {
     if (envelope == null || !envelope.path("errors").isArray()) {
       return List.of();
     }
-    return mapper.convertValue(
+    return this.mapper.convertValue(
         envelope.get("errors"),
-        mapper.getTypeFactory().constructCollectionType(List.class, ApiError.class));
+        this.mapper.getTypeFactory().constructCollectionType(List.class, ApiError.class));
   }
 
-  private static Duration retryAfter(HttpResponse<?> response) {
+  private static Duration retryAfter(final HttpResponse<?> response) {
     return response
         .headers()
         .firstValue("Retry-After")
@@ -247,37 +250,37 @@ public class CloudflareClient {
             value -> {
               try {
                 return Optional.of(Duration.ofSeconds(Long.parseLong(value.trim())));
-              } catch (NumberFormatException e) {
+              } catch (final NumberFormatException e) {
                 return Optional.empty();
               }
             })
         .orElse(null);
   }
 
-  private JsonNode parse(String body) {
+  private JsonNode parse(final String body) {
     if (body == null || body.isBlank()) {
       return null;
     }
     try {
-      return mapper.readTree(body);
-    } catch (JsonProcessingException e) {
+      return this.mapper.readTree(body);
+    } catch (final JsonProcessingException e) {
       return null;
     }
   }
 
-  private String toJson(Object body) {
+  private String toJson(final Object body) {
     try {
-      return mapper.writeValueAsString(body);
-    } catch (JsonProcessingException e) {
+      return this.mapper.writeValueAsString(body);
+    } catch (final JsonProcessingException e) {
       throw new IllegalArgumentException("Cannot serialize request body", e);
     }
   }
 
-  private static String segment(String value) {
+  private static String segment(final String value) {
     return URLEncoder.encode(value, StandardCharsets.UTF_8).replace("+", "%20");
   }
 
-  private static String query(String value) {
+  private static String query(final String value) {
     return URLEncoder.encode(value, StandardCharsets.UTF_8);
   }
 }

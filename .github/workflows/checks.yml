@@ -1,0 +1,39 @@
+name: Checks
+
+on:
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  editorconfig:
+    name: EditorConfig check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: There must be only one .editorconfig file
+        run: |
+          if [ "$(find . -name '.editorconfig' | wc -l)" != "1" ]; then
+            exit 1
+          fi
+
+      - name: Check EditorConfig compliance
+        uses: editorconfig-checker/action-editorconfig-checker@v2
+        with:
+          version: v3.0.3
+
+  java:
+    name: Java code-style and test checks
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: "21"
+          cache: maven
+
+      - name: Build and verify
+        run: mvn -B -ntp verify

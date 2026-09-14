@@ -2,7 +2,6 @@ package io.repsy.cfpo.crd;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonPropertyDescription;
-
 import io.fabric8.crd.generator.annotation.PrinterColumn;
 import io.fabric8.generator.annotation.Default;
 import io.fabric8.generator.annotation.Pattern;
@@ -52,50 +51,50 @@ public class CloudflarePageSpec {
   private String revision;
 
   public String getImage() {
-    return image;
+    return this.image;
   }
 
-  public void setImage(String image) {
+  public void setImage(final String image) {
     this.image = image;
   }
 
   public String getDirectory() {
-    return directory;
+    return this.directory;
   }
 
-  public void setDirectory(String directory) {
+  public void setDirectory(final String directory) {
     this.directory = directory;
   }
 
   public String getDomain() {
-    return domain;
+    return this.domain;
   }
 
-  public void setDomain(String domain) {
+  public void setDomain(final String domain) {
     this.domain = domain;
   }
 
   public String getProjectName() {
-    return projectName;
+    return this.projectName;
   }
 
-  public void setProjectName(String projectName) {
+  public void setProjectName(final String projectName) {
     this.projectName = projectName;
   }
 
   public String getBranch() {
-    return branch;
+    return this.branch;
   }
 
-  public void setBranch(String branch) {
+  public void setBranch(final String branch) {
     this.branch = branch;
   }
 
   public String getRevision() {
-    return revision;
+    return this.revision;
   }
 
-  public void setRevision(String revision) {
+  public void setRevision(final String revision) {
     this.revision = revision;
   }
 }

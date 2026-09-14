@@ -16,15 +16,12 @@ import static com.github.tomakehurst.wiremock.core.WireMockConfiguration.wireMoc
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import com.github.tomakehurst.wiremock.junit5.WireMockExtension;
+import io.repsy.cfpo.cloudflare.model.PagesProject;
 import java.time.Duration;
-
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.RegisterExtension;
-
-import com.github.tomakehurst.wiremock.junit5.WireMockExtension;
-
-import io.repsy.cfpo.cloudflare.model.PagesProject;
 
 class CloudflareClientTest {
 
@@ -44,7 +41,10 @@ class CloudflareClientTest {
   }
 
   static String error(int code, String message) {
-    return "{\"success\":false,\"errors\":[{\"code\":" + code + ",\"message\":\"" + message
+    return "{\"success\":false,\"errors\":[{\"code\":"
+        + code
+        + ",\"message\":\""
+        + message
         + "\"}],\"messages\":[],\"result\":null}";
   }
 
@@ -61,7 +61,10 @@ class CloudflareClientTest {
   void createProjectSendsAuthAndBody() {
     wm.stubFor(
         post("/client/v4/accounts/acc/pages/projects")
-            .willReturn(okJson(ok("{\"id\":\"p1\",\"name\":\"web\",\"subdomain\":\"web-3x1.pages.dev\",\"production_branch\":\"main\",\"extra\":1}"))));
+            .willReturn(
+                okJson(
+                    ok(
+                        "{\"id\":\"p1\",\"name\":\"web\",\"subdomain\":\"web-3x1.pages.dev\",\"production_branch\":\"main\",\"extra\":1}"))));
 
     PagesProject project = client.createProject("web", "main");
 
@@ -120,10 +123,14 @@ class CloudflareClientTest {
         get(urlPathEqualTo("/client/v4/zones"))
             .withQueryParam("name", equalTo("example.com"))
             .withQueryParam("account.id", equalTo("acc"))
-            .willReturn(okJson(ok("[{\"id\":\"z1\",\"name\":\"example.com\",\"status\":\"active\"}]"))));
+            .willReturn(
+                okJson(ok("[{\"id\":\"z1\",\"name\":\"example.com\",\"status\":\"active\"}]"))));
 
-    assertThat(client.findZoneForDomain("A.b.example.com")).hasValueSatisfying(z -> assertThat(z.id()).isEqualTo("z1"));
-    wm.verify(0, getRequestedFor(urlPathEqualTo("/client/v4/zones")).withQueryParam("name", equalTo("com")));
+    assertThat(client.findZoneForDomain("A.b.example.com"))
+        .hasValueSatisfying(z -> assertThat(z.id()).isEqualTo("z1"));
+    wm.verify(
+        0,
+        getRequestedFor(urlPathEqualTo("/client/v4/zones")).withQueryParam("name", equalTo("com")));
   }
 
   @Test

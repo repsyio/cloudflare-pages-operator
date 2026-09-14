@@ -1,10 +1,5 @@
 package io.repsy.cfpo.reconciler;
 
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-
 import io.fabric8.kubernetes.api.model.Capabilities;
 import io.fabric8.kubernetes.api.model.CapabilitiesBuilder;
 import io.fabric8.kubernetes.api.model.EnvVar;
@@ -21,6 +16,10 @@ import io.repsy.cfpo.cloudflare.CloudflareClient;
 import io.repsy.cfpo.config.OperatorConfig;
 import io.repsy.cfpo.crd.CloudflarePage;
 import io.repsy.cfpo.crd.CloudflarePageSpec;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
 
 /**
  * Builds the Job that publishes one version of a site.
@@ -72,18 +71,22 @@ public class DeployJobFactory {
 
   private final OperatorConfig config;
 
-  public DeployJobFactory(OperatorConfig config) {
+  public DeployJobFactory(final OperatorConfig config) {
     this.config = config;
   }
 
-  public Job build(CloudflarePage page, String projectName, String jobName, String deployHash) {
-    CloudflarePageSpec spec = page.getSpec();
-    Map<String, String> labels = new HashMap<>();
+  public Job build(
+      final CloudflarePage page,
+      final String projectName,
+      final String jobName,
+      final String deployHash) {
+    final CloudflarePageSpec spec = page.getSpec();
+    final Map<String, String> labels = new HashMap<>();
     labels.put(MANAGED_BY_LABEL, MANAGED_BY_VALUE);
     labels.put(OWNER_UID_LABEL, page.getMetadata().getUid());
     labels.put(DEPLOY_HASH_LABEL, deployHash);
 
-    Map<String, String> annotations = new HashMap<>();
+    final Map<String, String> annotations = new HashMap<>();
     annotations.put(OWNER_NAMESPACE_ANNOTATION, page.getMetadata().getNamespace());
     annotations.put(OWNER_NAME_ANNOTATION, page.getMetadata().getName());
     annotations.put(IMAGE_ANNOTATION, spec.getImage());
@@ -91,14 +94,14 @@ public class DeployJobFactory {
     return new JobBuilder()
         .withNewMetadata()
         .withName(jobName)
-        .withNamespace(config.operatorNamespace())
+        .withNamespace(this.config.operatorNamespace())
         .withLabels(labels)
         .withAnnotations(annotations)
         .endMetadata()
         .withNewSpec()
         .withBackoffLimit(BACKOFF_LIMIT)
-        .withTtlSecondsAfterFinished((int) config.deployJobTtlSeconds())
-        .withActiveDeadlineSeconds(config.deployJobDeadlineSeconds())
+        .withTtlSecondsAfterFinished((int) this.config.deployJobTtlSeconds())
+        .withActiveDeadlineSeconds(this.config.deployJobDeadlineSeconds())
         .withNewTemplate()
         .withNewMetadata()
         .withLabels(labels)
@@ -109,7 +112,7 @@ public class DeployJobFactory {
         .withAutomountServiceAccountToken(false)
         .withEnableServiceLinks(false)
         .withImagePullSecrets(
-            config.deployPullSecrets().stream().map(LocalObjectReference::new).toList())
+            this.config.deployPullSecrets().stream().map(LocalObjectReference::new).toList())
         .withNewSecurityContext()
         .withNewSeccompProfile()
         .withType("RuntimeDefault")
@@ -142,11 +145,11 @@ public class DeployJobFactory {
         .endInitContainer()
         .addNewContainer()
         .withName(DEPLOY_CONTAINER)
-        .withImage(config.deployerImage())
-        .withArgs(wranglerArgs(spec, projectName))
-        .withEnv(deployerEnv())
+        .withImage(this.config.deployerImage())
+        .withArgs(this.wranglerArgs(spec, projectName))
+        .withEnv(this.deployerEnv())
         .withSecurityContext(restricted(DEPLOYER_UID))
-        .withResources(config.deployJobResources())
+        .withResources(this.config.deployJobResources())
         .withTerminationMessagePolicy("FallbackToLogsOnError")
         .addNewVolumeMount()
         .withName(SITE_VOLUME)
@@ -160,27 +163,27 @@ public class DeployJobFactory {
         .build();
   }
 
-  static String branch(CloudflarePageSpec spec) {
+  static String branch(final CloudflarePageSpec spec) {
     return spec.getBranch() == null || spec.getBranch().isBlank()
         ? DEFAULT_BRANCH
         : spec.getBranch();
   }
 
   /** Maps a deploy Job back to the CloudflarePage it belongs to, using its annotations. */
-  public static Set<ResourceID> ownerOf(Job job) {
-    Map<String, String> annotations = job.getMetadata().getAnnotations();
+  public static Set<ResourceID> ownerOf(final Job job) {
+    final Map<String, String> annotations = job.getMetadata().getAnnotations();
     if (annotations == null) {
       return Set.of();
     }
-    String namespace = annotations.get(OWNER_NAMESPACE_ANNOTATION);
-    String name = annotations.get(OWNER_NAME_ANNOTATION);
+    final String namespace = annotations.get(OWNER_NAMESPACE_ANNOTATION);
+    final String name = annotations.get(OWNER_NAME_ANNOTATION);
     if (namespace == null || name == null) {
       return Set.of();
     }
     return Set.of(new ResourceID(name, namespace));
   }
 
-  private List<String> wranglerArgs(CloudflarePageSpec spec, String projectName) {
+  private List<String> wranglerArgs(final CloudflarePageSpec spec, final String projectName) {
     return List.of(
         "pages",
         "deploy",
@@ -192,30 +195,30 @@ public class DeployJobFactory {
   }
 
   private List<EnvVar> deployerEnv() {
-    List<EnvVar> env = new java.util.ArrayList<>();
+    final List<EnvVar> env = new java.util.ArrayList<>();
     env.add(
         new EnvVarBuilder()
             .withName("CLOUDFLARE_API_TOKEN")
             .withNewValueFrom()
             .withNewSecretKeyRef()
-            .withName(config.credentialsSecretName())
-            .withKey(config.credentialsSecretKey())
+            .withName(this.config.credentialsSecretName())
+            .withKey(this.config.credentialsSecretKey())
             .endSecretKeyRef()
             .endValueFrom()
             .build());
-    env.add(env("CLOUDFLARE_ACCOUNT_ID", config.accountId()));
-    if (!CloudflareClient.DEFAULT_BASE_URL.equals(config.apiBaseUrl())) {
-      env.add(env("CLOUDFLARE_API_BASE_URL", config.apiBaseUrl()));
+    env.add(env("CLOUDFLARE_ACCOUNT_ID", this.config.accountId()));
+    if (!CloudflareClient.DEFAULT_BASE_URL.equals(this.config.apiBaseUrl())) {
+      env.add(env("CLOUDFLARE_API_BASE_URL", this.config.apiBaseUrl()));
     }
     return env;
   }
 
-  private static EnvVar env(String name, String value) {
+  private static EnvVar env(final String name, final String value) {
     return new EnvVarBuilder().withName(name).withValue(value).build();
   }
 
-  private static SecurityContext restricted(long uid) {
-    Capabilities dropAll = new CapabilitiesBuilder().withDrop("ALL").build();
+  private static SecurityContext restricted(final long uid) {
+    final Capabilities dropAll = new CapabilitiesBuilder().withDrop("ALL").build();
     return new SecurityContextBuilder()
         .withRunAsNonRoot(true)
         .withRunAsUser(uid)

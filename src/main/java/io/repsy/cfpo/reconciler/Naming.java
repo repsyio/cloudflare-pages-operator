@@ -19,11 +19,13 @@ public final class Naming {
   public static final int MAX_DNS_COMMENT = 100;
 
   static final int HASH_LENGTH = 10;
+  private static final int DNS_COMMENT_HASH_LENGTH = 32;
   private static final String COMMENT_PREFIX = "managed-by: cfpo ";
 
   private Naming() {}
 
-  public static String projectName(String explicitName, String namespace, String name) {
+  public static String projectName(
+      final String explicitName, final String namespace, final String name) {
     if (explicitName != null && !explicitName.isBlank()) {
       return explicitName;
     }
@@ -31,31 +33,32 @@ public final class Naming {
   }
 
   /** Changes whenever the deployed content source changes. */
-  public static String deployHash(String image, String directory) {
+  public static String deployHash(final String image, final String directory) {
     return sha256(image + "\n" + directory).substring(0, HASH_LENGTH);
   }
 
-  public static String deployJobName(String namespace, String name, String deployHash) {
-    String base =
+  public static String deployJobName(
+      final String namespace, final String name, final String deployHash) {
+    final String base =
         truncateWithHash(sanitize(namespace + "-" + name), MAX_JOB_NAME - HASH_LENGTH - 1);
     return base + "-" + deployHash;
   }
 
   /** Marks DNS records created by this operator for one specific resource. */
-  public static String dnsComment(String namespace, String name) {
-    String comment = COMMENT_PREFIX + namespace + "/" + name;
+  public static String dnsComment(final String namespace, final String name) {
+    final String comment = COMMENT_PREFIX + namespace + "/" + name;
     if (comment.length() <= MAX_DNS_COMMENT) {
       return comment;
     }
-    return COMMENT_PREFIX + sha256(namespace + "/" + name).substring(0, 32);
+    return COMMENT_PREFIX + sha256(namespace + "/" + name).substring(0, DNS_COMMENT_HASH_LENGTH);
   }
 
-  public static String pagesDevHost(String projectName) {
+  public static String pagesDevHost(final String projectName) {
     return projectName + ".pages.dev";
   }
 
-  static String sanitize(String value) {
-    String cleaned =
+  static String sanitize(final String value) {
+    final String cleaned =
         value
             .toLowerCase(Locale.ROOT)
             .replaceAll("[^a-z0-9-]", "-")
@@ -64,21 +67,21 @@ public final class Naming {
     return cleaned.isEmpty() ? "site" : cleaned;
   }
 
-  static String truncateWithHash(String value, int maxLength) {
+  static String truncateWithHash(final String value, final int maxLength) {
     if (value.length() <= maxLength) {
       return value;
     }
-    String hash = sha256(value).substring(0, 8);
-    String prefix = value.substring(0, maxLength - hash.length() - 1).replaceAll("-+$", "");
+    final String hash = sha256(value).substring(0, 8);
+    final String prefix = value.substring(0, maxLength - hash.length() - 1).replaceAll("-+$", "");
     return prefix + "-" + hash;
   }
 
-  static String sha256(String value) {
+  static String sha256(final String value) {
     try {
-      byte[] digest =
+      final byte[] digest =
           MessageDigest.getInstance("SHA-256").digest(value.getBytes(StandardCharsets.UTF_8));
       return HexFormat.of().formatHex(digest);
-    } catch (NoSuchAlgorithmException e) {
+    } catch (final NoSuchAlgorithmException e) {
       throw new IllegalStateException("SHA-256 not available", e);
     }
   }

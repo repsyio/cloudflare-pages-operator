@@ -2,11 +2,6 @@ package io.repsy.cfpo.reconciler;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import java.util.List;
-import java.util.Map;
-
-import org.junit.jupiter.api.Test;
-
 import io.fabric8.kubernetes.api.model.Container;
 import io.fabric8.kubernetes.api.model.ContainerStatusBuilder;
 import io.fabric8.kubernetes.api.model.EnvVar;
@@ -20,6 +15,9 @@ import io.repsy.cfpo.config.OperatorConfig;
 import io.repsy.cfpo.config.OperatorConfigTest;
 import io.repsy.cfpo.crd.CloudflarePage;
 import io.repsy.cfpo.crd.CloudflarePageSpec;
+import java.util.List;
+import java.util.Map;
+import org.junit.jupiter.api.Test;
 
 class DeployJobFactoryTest {
 
@@ -29,7 +27,8 @@ class DeployJobFactoryTest {
     spec.setDirectory(directory);
     spec.setDomain("app.example.com");
     CloudflarePage page = new CloudflarePage();
-    page.setMetadata(new ObjectMetaBuilder().withNamespace("apps").withName("web").withUid("uid-1").build());
+    page.setMetadata(
+        new ObjectMetaBuilder().withNamespace("apps").withName("web").withUid("uid-1").build());
     page.setSpec(spec);
     return page;
   }
@@ -73,7 +72,9 @@ class DeployJobFactoryTest {
     assertThat(copy.getImagePullPolicy()).isNull();
     assertThat(copy.getCommand()).containsExactly("sh", "-c", DeployJobFactory.COPY_SCRIPT);
     assertThat(copy.getCommand().get(2)).doesNotContain("rm -rf");
-    assertThat(copy.getEnv()).extracting(EnvVar::getName, EnvVar::getValue).containsExactly(org.assertj.core.groups.Tuple.tuple("SOURCE_DIR", hostile));
+    assertThat(copy.getEnv())
+        .extracting(EnvVar::getName, EnvVar::getValue)
+        .containsExactly(org.assertj.core.groups.Tuple.tuple("SOURCE_DIR", hostile));
     assertThat(copy.getSecurityContext().getRunAsNonRoot()).isTrue();
   }
 
@@ -92,11 +93,17 @@ class DeployJobFactoryTest {
     assertThat(deploy.getArgs())
         .startsWith("pages", "deploy", DeployJobFactory.SITE_PATH)
         .contains("--project-name=apps-web", "--branch=production");
-    EnvVar token = deploy.getEnv().stream().filter(e -> e.getName().equals("CLOUDFLARE_API_TOKEN")).findFirst().orElseThrow();
+    EnvVar token =
+        deploy.getEnv().stream()
+            .filter(e -> e.getName().equals("CLOUDFLARE_API_TOKEN"))
+            .findFirst()
+            .orElseThrow();
     assertThat(token.getValue()).isNull();
     assertThat(token.getValueFrom().getSecretKeyRef().getName()).isEqualTo("cfpo");
     assertThat(token.getValueFrom().getSecretKeyRef().getKey()).isEqualTo("api-token");
-    assertThat(deploy.getEnv()).extracting(EnvVar::getName).doesNotContain("CLOUDFLARE_API_BASE_URL");
+    assertThat(deploy.getEnv())
+        .extracting(EnvVar::getName)
+        .doesNotContain("CLOUDFLARE_API_BASE_URL");
     assertThat(deploy.getVolumeMounts().getFirst().getReadOnly()).isTrue();
   }
 
@@ -104,7 +111,14 @@ class DeployJobFactoryTest {
   void jobStatesReadConditionsAndContainerOutput() {
     Job running = new JobBuilder().withNewStatus().withActive(1).endStatus().build();
     Job complete =
-        new JobBuilder().withNewStatus().addNewCondition().withType("Complete").withStatus("True").endCondition().endStatus().build();
+        new JobBuilder()
+            .withNewStatus()
+            .addNewCondition()
+            .withType("Complete")
+            .withStatus("True")
+            .endCondition()
+            .endStatus()
+            .build();
     Job failed =
         new JobBuilder()
             .withNewStatus()
@@ -124,7 +138,9 @@ class DeployJobFactoryTest {
 
     var pod =
         new PodBuilder()
-            .withNewMetadata().withName("p").endMetadata()
+            .withNewMetadata()
+            .withName("p")
+            .endMetadata()
             .withNewStatus()
             .withInitContainerStatuses(
                 new ContainerStatusBuilder()
@@ -139,6 +155,7 @@ class DeployJobFactoryTest {
             .endStatus()
             .build();
     assertThat(JobStates.describeFailure(failed, List.of(pod)))
-        .isEqualTo("container copy-site exited with code 2: directory /dist does not exist in the image");
+        .isEqualTo(
+            "container copy-site exited with code 2: directory /dist does not exist in the image");
   }
 }

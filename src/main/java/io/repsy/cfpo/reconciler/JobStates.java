@@ -1,25 +1,25 @@
 package io.repsy.cfpo.reconciler;
 
+import io.fabric8.kubernetes.api.model.ContainerStateTerminated;
+import io.fabric8.kubernetes.api.model.ContainerStatus;
+import io.fabric8.kubernetes.api.model.Pod;
+import io.fabric8.kubernetes.api.model.batch.v1.Job;
+import io.fabric8.kubernetes.api.model.batch.v1.JobCondition;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.stream.Stream;
 
-import io.fabric8.kubernetes.api.model.ContainerStateTerminated;
-import io.fabric8.kubernetes.api.model.ContainerStatus;
-import io.fabric8.kubernetes.api.model.Pod;
-import io.fabric8.kubernetes.api.model.batch.v1.Job;
-import io.fabric8.kubernetes.api.model.batch.v1.JobCondition;
-
 /** Reads the outcome of deploy Jobs. */
 final class JobStates {
 
   static final int MAX_MESSAGE_LENGTH = 1024;
+  private static final int ELLIPSIS_LENGTH = 3;
 
   private JobStates() {}
 
-  static boolean succeeded(Job job) {
+  static boolean succeeded(final Job job) {
     if (hasCondition(job, "Complete")) {
       return true;
     }
@@ -28,11 +28,11 @@ final class JobStates {
         && job.getStatus().getSucceeded() > 0;
   }
 
-  static boolean failed(Job job) {
+  static boolean failed(final Job job) {
     return hasCondition(job, "Failed");
   }
 
-  static boolean finished(Job job) {
+  static boolean finished(final Job job) {
     return succeeded(job) || failed(job);
   }
 
@@ -40,8 +40,8 @@ final class JobStates {
    * Explains a failed Job, preferring the output of the failing container (its termination message
    * falls back to the log tail) over the Job's generic condition message.
    */
-  static String describeFailure(Job job, List<Pod> pods) {
-    Optional<String> containerFailure =
+  static String describeFailure(final Job job, final List<Pod> pods) {
+    final Optional<String> containerFailure =
         pods.stream()
             .sorted(
                 Comparator.comparing(
@@ -58,7 +58,7 @@ final class JobStates {
         .orElse("Deploy job failed");
   }
 
-  private static Stream<String> failedContainers(Pod pod) {
+  private static Stream<String> failedContainers(final Pod pod) {
     if (pod.getStatus() == null) {
       return Stream.empty();
     }
@@ -69,29 +69,37 @@ final class JobStates {
         .filter(Objects::nonNull);
   }
 
-  private static String failureOf(ContainerStatus status) {
+  @SuppressWarnings("checkstyle:CyclomaticComplexity")
+  private static String failureOf(final ContainerStatus status) {
     if (status.getState() != null && status.getState().getWaiting() != null) {
-      String reason = status.getState().getWaiting().getReason();
+      final String reason = status.getState().getWaiting().getReason();
       if ("ErrImagePull".equals(reason) || "ImagePullBackOff".equals(reason)) {
-        return "container " + status.getName() + ": " + reason + ": "
+        return "container "
+            + status.getName()
+            + ": "
+            + reason
+            + ": "
             + status.getState().getWaiting().getMessage();
       }
     }
-    ContainerStateTerminated terminated =
+    final ContainerStateTerminated terminated =
         status.getState() == null ? null : status.getState().getTerminated();
     if (terminated == null || terminated.getExitCode() == null || terminated.getExitCode() == 0) {
       return null;
     }
-    String output = terminated.getMessage() == null ? "" : terminated.getMessage().strip();
-    return "container " + status.getName() + " exited with code " + terminated.getExitCode()
+    final String output = terminated.getMessage() == null ? "" : terminated.getMessage().strip();
+    return "container "
+        + status.getName()
+        + " exited with code "
+        + terminated.getExitCode()
         + (output.isEmpty() ? "" : ": " + output);
   }
 
-  private static boolean hasCondition(Job job, String type) {
+  private static boolean hasCondition(final Job job, final String type) {
     return condition(job, type).isPresent();
   }
 
-  private static Optional<JobCondition> condition(Job job, String type) {
+  private static Optional<JobCondition> condition(final Job job, final String type) {
     if (job.getStatus() == null || job.getStatus().getConditions() == null) {
       return Optional.empty();
     }
@@ -101,10 +109,10 @@ final class JobStates {
   }
 
   /** Keeps the end of long messages, where tool output usually has the actual error. */
-  private static String truncate(String message) {
+  private static String truncate(final String message) {
     if (message.length() <= MAX_MESSAGE_LENGTH) {
       return message;
     }
-    return "..." + message.substring(message.length() - (MAX_MESSAGE_LENGTH - 3));
+    return "..." + message.substring(message.length() - (MAX_MESSAGE_LENGTH - ELLIPSIS_LENGTH));
   }
 }

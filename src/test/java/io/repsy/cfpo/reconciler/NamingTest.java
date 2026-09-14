@@ -15,7 +15,8 @@ class NamingTest {
 
   @Test
   void derivedProjectNameIsSanitized() {
-    assertThat(Naming.projectName(null, "Team.Apps", "web__frontend")).isEqualTo("team-apps-web-frontend");
+    assertThat(Naming.projectName(null, "Team.Apps", "web__frontend"))
+        .isEqualTo("team-apps-web-frontend");
     assertThat(Naming.projectName("  ", "apps", "web")).isEqualTo("apps-web");
   }
 
@@ -35,7 +36,9 @@ class NamingTest {
   @Test
   void deployHashChangesWithImageOrDirectory() {
     String base = Naming.deployHash("registry/web:1", "/dist");
-    assertThat(base).hasSize(Naming.HASH_LENGTH).isEqualTo(Naming.deployHash("registry/web:1", "/dist"));
+    assertThat(base)
+        .hasSize(Naming.HASH_LENGTH)
+        .isEqualTo(Naming.deployHash("registry/web:1", "/dist"));
     assertThat(Naming.deployHash("registry/web:2", "/dist")).isNotEqualTo(base);
     assertThat(Naming.deployHash("registry/web:1", "/public")).isNotEqualTo(base);
   }

@@ -1,17 +1,15 @@
 package io.repsy.cfpo.crd;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.annotation.JsonInclude;
+import io.fabric8.crd.generator.annotation.PrinterColumn;
+import io.fabric8.kubernetes.api.model.Condition;
+import io.fabric8.kubernetes.api.model.ConditionBuilder;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
-
-import com.fasterxml.jackson.annotation.JsonIgnore;
-import com.fasterxml.jackson.annotation.JsonInclude;
-
-import io.fabric8.crd.generator.annotation.PrinterColumn;
-import io.fabric8.kubernetes.api.model.Condition;
-import io.fabric8.kubernetes.api.model.ConditionBuilder;
 
 @JsonInclude(JsonInclude.Include.NON_NULL)
 public class CloudflarePageStatus {
@@ -61,38 +59,42 @@ public class CloudflarePageStatus {
 
   /** Adds or updates a condition, keeping its transition time when the status did not change. */
   public void setCondition(
-      String type, boolean value, String reason, String message, Long generation) {
-    String statusValue = value ? "True" : "False";
-    Optional<Condition> existing = condition(type);
+      final String type,
+      final boolean value,
+      final String reason,
+      final String conditionMessage,
+      final Long generation) {
+    final String statusValue = value ? "True" : "False";
+    final Optional<Condition> existing = this.condition(type);
     if (existing.isEmpty()) {
-      conditions.add(
+      this.conditions.add(
           new ConditionBuilder()
               .withType(type)
               .withStatus(statusValue)
               .withReason(reason)
-              .withMessage(message)
+              .withMessage(conditionMessage)
               .withObservedGeneration(generation)
               .withLastTransitionTime(now())
               .build());
       return;
     }
-    Condition condition = existing.get();
+    final Condition condition = existing.get();
     if (!statusValue.equals(condition.getStatus())) {
       condition.setLastTransitionTime(now());
     }
     condition.setStatus(statusValue);
     condition.setReason(reason);
-    condition.setMessage(message);
+    condition.setMessage(conditionMessage);
     condition.setObservedGeneration(generation);
   }
 
-  public Optional<Condition> condition(String type) {
-    return conditions.stream().filter(c -> type.equals(c.getType())).findFirst();
+  public Optional<Condition> condition(final String type) {
+    return this.conditions.stream().filter(c -> type.equals(c.getType())).findFirst();
   }
 
   @JsonIgnore
-  public boolean isConditionTrue(String type) {
-    return condition(type).map(c -> "True".equals(c.getStatus())).orElse(false);
+  public boolean isConditionTrue(final String type) {
+    return this.condition(type).map(c -> "True".equals(c.getStatus())).orElse(false);
   }
 
   private static String now() {
@@ -100,138 +102,138 @@ public class CloudflarePageStatus {
   }
 
   public String getPhase() {
-    return phase;
+    return this.phase;
   }
 
-  public void setPhase(String phase) {
+  public void setPhase(final String phase) {
     this.phase = phase;
   }
 
   public String getMessage() {
-    return message;
+    return this.message;
   }
 
-  public void setMessage(String message) {
+  public void setMessage(final String message) {
     this.message = message;
   }
 
   public Long getObservedGeneration() {
-    return observedGeneration;
+    return this.observedGeneration;
   }
 
-  public void setObservedGeneration(Long observedGeneration) {
+  public void setObservedGeneration(final Long observedGeneration) {
     this.observedGeneration = observedGeneration;
   }
 
   public String getUrl() {
-    return url;
+    return this.url;
   }
 
-  public void setUrl(String url) {
+  public void setUrl(final String url) {
     this.url = url;
   }
 
   public String getPagesDevUrl() {
-    return pagesDevUrl;
+    return this.pagesDevUrl;
   }
 
-  public void setPagesDevUrl(String pagesDevUrl) {
+  public void setPagesDevUrl(final String pagesDevUrl) {
     this.pagesDevUrl = pagesDevUrl;
   }
 
   public String getProjectName() {
-    return projectName;
+    return this.projectName;
   }
 
-  public void setProjectName(String projectName) {
+  public void setProjectName(final String projectName) {
     this.projectName = projectName;
   }
 
   public Boolean getProjectCreated() {
-    return projectCreated;
+    return this.projectCreated;
   }
 
-  public void setProjectCreated(Boolean projectCreated) {
+  public void setProjectCreated(final Boolean projectCreated) {
     this.projectCreated = projectCreated;
   }
 
   public String getDomain() {
-    return domain;
+    return this.domain;
   }
 
-  public void setDomain(String domain) {
+  public void setDomain(final String domain) {
     this.domain = domain;
   }
 
   public String getDomainStatus() {
-    return domainStatus;
+    return this.domainStatus;
   }
 
-  public void setDomainStatus(String domainStatus) {
+  public void setDomainStatus(final String domainStatus) {
     this.domainStatus = domainStatus;
   }
 
   public String getZoneId() {
-    return zoneId;
+    return this.zoneId;
   }
 
-  public void setZoneId(String zoneId) {
+  public void setZoneId(final String zoneId) {
     this.zoneId = zoneId;
   }
 
   public String getDnsRecordId() {
-    return dnsRecordId;
+    return this.dnsRecordId;
   }
 
-  public void setDnsRecordId(String dnsRecordId) {
+  public void setDnsRecordId(final String dnsRecordId) {
     this.dnsRecordId = dnsRecordId;
   }
 
   public String getDeployJob() {
-    return deployJob;
+    return this.deployJob;
   }
 
-  public void setDeployJob(String deployJob) {
+  public void setDeployJob(final String deployJob) {
     this.deployJob = deployJob;
   }
 
   public String getDeployedHash() {
-    return deployedHash;
+    return this.deployedHash;
   }
 
-  public void setDeployedHash(String deployedHash) {
+  public void setDeployedHash(final String deployedHash) {
     this.deployedHash = deployedHash;
   }
 
   public String getDeployedImage() {
-    return deployedImage;
+    return this.deployedImage;
   }
 
-  public void setDeployedImage(String deployedImage) {
+  public void setDeployedImage(final String deployedImage) {
     this.deployedImage = deployedImage;
   }
 
   public String getDeployedAt() {
-    return deployedAt;
+    return this.deployedAt;
   }
 
-  public void setDeployedAt(String deployedAt) {
+  public void setDeployedAt(final String deployedAt) {
     this.deployedAt = deployedAt;
   }
 
   public String getFailedHash() {
-    return failedHash;
+    return this.failedHash;
   }
 
-  public void setFailedHash(String failedHash) {
+  public void setFailedHash(final String failedHash) {
     this.failedHash = failedHash;
   }
 
   public List<Condition> getConditions() {
-    return conditions;
+    return this.conditions;
   }
 
-  public void setConditions(List<Condition> conditions) {
+  public void setConditions(final List<Condition> conditions) {
     this.conditions = conditions == null ? new ArrayList<>() : new ArrayList<>(conditions);
   }
 }
