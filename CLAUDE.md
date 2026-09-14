@@ -2,7 +2,7 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-cfpo is a Kubernetes operator (Java 21, Java Operator SDK 5.6 on Fabric8 7.8). It publishes a static site from a directory inside a container image to Cloudflare Pages, attaches a custom domain and manages the CNAME record. There is no Spring or Quarkus; the operator is a plain `main` in `CfpoOperator`.
+cfpo is a Kubernetes operator (Java 25, Java Operator SDK 5.6 on Fabric8 7.8). It publishes a static site from a directory inside a container image to Cloudflare Pages, attaches a custom domain and manages the CNAME record. There is no Spring or Quarkus; the operator is a plain `main` in `CfpoOperator`.
 
 ## Commands
 
