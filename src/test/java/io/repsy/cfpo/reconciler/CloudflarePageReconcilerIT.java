@@ -206,15 +206,20 @@ class CloudflarePageReconcilerIT {
     client.resource(page("moved", "moved.example.com")).create();
     Job first = awaitJob("moved");
 
-    client
-        .resources(CloudflarePage.class)
-        .inNamespace(APP_NS)
-        .withName("moved")
-        .edit(
-            p -> {
-              p.getSpec().setImage(IMAGE_V2);
-              return p;
-            });
+    await()
+        .atMost(TIMEOUT)
+        .ignoreExceptions()
+        .untilAsserted(
+            () ->
+                client
+                    .resources(CloudflarePage.class)
+                    .inNamespace(APP_NS)
+                    .withName("moved")
+                    .edit(
+                        p -> {
+                          p.getSpec().setImage(IMAGE_V2);
+                          return p;
+                        }));
 
     String secondName =
         Naming.deployJobName(APP_NS, "moved", Naming.deployHash(IMAGE_V2, DIRECTORY));
