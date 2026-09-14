@@ -9,6 +9,11 @@ on:
         description: Image tag to publish, without the leading v (e.g. 0.1.0)
         required: true
 
+permissions:
+  contents: read
+  actions: read
+  packages: read
+
 env:
   REGISTRY: repo.repsy.io
   IMAGE_PREFIX: repo.repsy.io/firat/apps
