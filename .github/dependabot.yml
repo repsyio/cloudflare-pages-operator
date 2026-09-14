@@ -1,0 +1,38 @@
+version: 2
+
+updates:
+  - package-ecosystem: maven
+    directory: /
+    schedule:
+      interval: weekly
+    groups:
+      maven-dependencies:
+        patterns:
+          - "*"
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    groups:
+      github-actions:
+        patterns:
+          - "*"
+
+  - package-ecosystem: docker
+    directory: /
+    schedule:
+      interval: weekly
+    groups:
+      operator-images:
+        patterns:
+          - "*"
+
+  - package-ecosystem: docker
+    directory: /deployer
+    schedule:
+      interval: weekly
+    groups:
+      deployer-images:
+        patterns:
+          - "*"
