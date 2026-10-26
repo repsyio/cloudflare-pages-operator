@@ -11,7 +11,7 @@ permissions:
 jobs:
   editorconfig:
     name: EditorConfig check
-    runs-on: ubuntu-latest
+    runs-on: repsy-sm
     steps:
       - uses: actions/checkout@v7
 
@@ -28,7 +28,7 @@ jobs:
 
   java:
     name: Java code-style and test checks
-    runs-on: ubuntu-latest
+    runs-on: repsy-md
     steps:
       - uses: actions/checkout@v7
 

@@ -19,7 +19,7 @@ env:
 
 jobs:
   test:
-    runs-on: ubuntu-latest
+    runs-on: repsy-md
     steps:
       - uses: actions/checkout@v7
 
@@ -34,7 +34,7 @@ jobs:
 
   images:
     needs: test
-    runs-on: ubuntu-latest
+    runs-on: repsy-md
     steps:
       - uses: actions/checkout@v7
 
