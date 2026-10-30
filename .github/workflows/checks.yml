@@ -11,7 +11,7 @@ permissions:
 jobs:
   editorconfig:
     name: EditorConfig check
-    runs-on: repsy-sm
+    runs-on: ubicloud-standard-2
     steps:
       - uses: actions/checkout@v7
 
@@ -28,7 +28,7 @@ jobs:
 
   java:
     name: Java code-style and test checks
-    runs-on: repsy-md
+    runs-on: ubicloud-standard-4
     steps:
       - uses: actions/checkout@v7
 

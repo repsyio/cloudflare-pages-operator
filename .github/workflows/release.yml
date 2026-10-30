@@ -19,7 +19,7 @@ env:
 
 jobs:
   test:
-    runs-on: repsy-md
+    runs-on: ubicloud-standard-4
     steps:
       - uses: actions/checkout@v7
 
@@ -34,7 +34,7 @@ jobs:
 
   images:
     needs: test
-    runs-on: repsy-md
+    runs-on: ubicloud-standard-4
     steps:
       - uses: actions/checkout@v7
 
