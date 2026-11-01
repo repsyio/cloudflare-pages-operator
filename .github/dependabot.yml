@@ -5,6 +5,8 @@ updates:
     directory: /
     schedule:
       interval: weekly
+      time: '00:30'
+      timezone: 'Europe/Amsterdam'
     ignore:
       - dependency-name: "*"
         update-types:
@@ -18,6 +20,8 @@ updates:
     directory: /
     schedule:
       interval: weekly
+      time: '00:30'
+      timezone: 'Europe/Amsterdam'
     groups:
       github-actions:
         patterns:
@@ -27,6 +31,8 @@ updates:
     directory: /
     schedule:
       interval: weekly
+      time: '00:30'
+      timezone: 'Europe/Amsterdam'
     groups:
       operator-images:
         patterns:
@@ -36,6 +42,8 @@ updates:
     directory: /deployer
     schedule:
       interval: weekly
+      time: '00:30'
+      timezone: 'Europe/Amsterdam'
     groups:
       deployer-images:
         patterns:
