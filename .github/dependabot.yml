@@ -37,6 +37,13 @@ updates:
       operator-images:
         patterns:
           - "*"
+    ignore:
+      # Stay on the Java 25 / Node 24 runtimes; RPS-2408.
+      - dependency-name: "node"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "eclipse-temurin"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "maven"
 
   - package-ecosystem: docker
     directory: /deployer
@@ -48,3 +55,10 @@ updates:
       deployer-images:
         patterns:
           - "*"
+    ignore:
+      # Stay on the Java 25 / Node 24 runtimes; RPS-2408.
+      - dependency-name: "node"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "eclipse-temurin"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "maven"
