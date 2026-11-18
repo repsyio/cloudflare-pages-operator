@@ -88,6 +88,7 @@ Each step records its outcome as a status condition: `Deployed`, `DomainActive`,
 - **ClusterRole:** covers `cloudflarepages` (including status and finalizers) and events.
 - **Role:** covers Jobs and pods in the operator namespace only.
 - **Events verbs:** JOSDK's event recorder GETs an existing event before creating or patching it, so events need `get`, `create`, `patch` and `update`. With fewer verbs every event fails with 403, while reconciling still works.
+- **Jobs verbs:** deleting a page removes its Jobs by label selector (`deleteDeployJobs`), which the API server authorises as `deletecollection`, not `delete`. Without that verb the cleanup fails and the finalizer blocks deleting the `CloudflarePage` (found in RPS-2557).
 - **Testing:** the IT client is cluster-admin, so tests can't catch a missing verb. Check a live install with `kubectl auth can-i <verb> <resource> -n <ns> --as system:serviceaccount:<release-ns>:cfpo`.
 
 **Name limits** (`reconciler/Naming`):
