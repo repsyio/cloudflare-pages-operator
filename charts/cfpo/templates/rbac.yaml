@@ -45,7 +45,8 @@ metadata:
 rules:
   - apiGroups: ["batch"]
     resources: ["jobs"]
-    verbs: ["get", "list", "watch", "create", "delete"]
+    # deletecollection: deleteDeployJobs removes a page's Jobs by label selector, which the API server authorises as a collection delete
+    verbs: ["get", "list", "watch", "create", "delete", "deletecollection"]
   - apiGroups: [""]
     resources: ["pods"]
     verbs: ["get", "list"]
